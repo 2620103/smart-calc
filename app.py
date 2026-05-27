@@ -19,9 +19,9 @@ safe_math_dict = {
     "π": math.pi
 }
 
-# --- 핵심 기능 로직 (콜백 함수) ---
+# --- 핵심 기능 로직 ---
 def add_to_calc(val):
-    if st.session_state.calc_state in ['Error', '방정식 문법 오류', '일반 수식 오류', '변수(x) 없음'] or any(x in st.session_state.calc_state for x in ["잭팟", "천사", "빨리", "="]):
+    if st.session_state.calc_state in ['Error', '방정식 문법 오류', '일반 수식 오류', '변수(x, y 등) 없음'] or any(x in st.session_state.calc_state for x in ["잭팟", "천사", "빨리", "="]):
         st.session_state.calc_state = ""
     st.session_state.calc_state += val
 
@@ -60,26 +60,57 @@ def trigger_easter_egg(egg_type):
         st.session_state.calc_state = "🚀 빨리빨리! 🔥"
     st.session_state.history = f"*** 🎁 이스터에그: {egg_type} ***\n" + st.session_state.history
 
+# ★ 연립방정식 지원으로 업그레이드된 로직 ★
 def solve_equation():
     expr = st.session_state.eq_input
     if not expr: return
+    
     try:
-        if '=' in expr:
-            left, right = expr.split('=', 1)
-            eq = sp.Eq(sp.sympify(left), sp.sympify(right))
-        else:
-            eq = sp.Eq(sp.sympify(expr), 0)
-            
-        symbols = list(eq.free_symbols)
+        # 쉼표(,)를 기준으로 여러 방정식을 분리
+        eq_strings = expr.split(',')
+        eq_list = []
+        
+        for eq_str in eq_strings:
+            eq_str = eq_str.strip()
+            if '=' in eq_str:
+                left, right = eq_str.split('=', 1)
+                eq_list.append(sp.Eq(sp.sympify(left), sp.sympify(right)))
+            else:
+                eq_list.append(sp.Eq(sp.sympify(eq_str), 0))
+                
+        # 수식에 사용된 모든 변수(x, y 등)를 찾음
+        symbols = set()
+        for eq in eq_list:
+            symbols.update(eq.free_symbols)
+        symbols = list(symbols)
+        
         if not symbols:
-            st.session_state.calc_state = "변수(x) 없음"
+            st.session_state.calc_state = "변수(x, y 등) 없음"
             return
             
-        target_var = symbols[0]
-        solutions = sp.solve(eq, target_var)
-        sol_str = " 또는 ".join([str(s) for s in solutions]) if solutions else "해가 없음"
-        formatted_result = f"{target_var} = {sol_str}"
+        # 연립방정식 풀이
+        solutions = sp.solve(eq_list, symbols)
         
+        # 해(Solution) 결과를 텍스트로 예쁘게 변환
+        if not solutions:
+            formatted_result = "해가 없음"
+        elif isinstance(solutions, dict):
+            # 단일 해 {x: 1, y: 2} 형태
+            sol_parts = [f"{var} = {val}" for var, val in solutions.items()]
+            formatted_result = ", ".join(sol_parts)
+        elif isinstance(solutions, list):
+            # 2차 방정식 등 해가 여러 개일 때
+            if all(isinstance(s, dict) for s in solutions):
+                sol_strs = ["(" + ", ".join([f"{k}={v}" for k, v in s.items()]) + ")" for s in solutions]
+                formatted_result = " 또는 ".join(sol_strs)
+            elif all(isinstance(s, tuple) for s in solutions):
+                sol_strs = ["(" + ", ".join([f"{symbols[i]}={s[i]}" for i in range(len(symbols))]) + ")" for s in solutions]
+                formatted_result = " 또는 ".join(sol_strs)
+            else:
+                formatted_result = " 또는 ".join([str(s) for s in solutions])
+        else:
+            formatted_result = str(solutions)
+            
         st.session_state.history = f"🧮 방정식: {expr} ➔ {formatted_result}\n" + st.session_state.history
         st.session_state.calc_state = formatted_result
     except Exception:
@@ -95,7 +126,7 @@ def do_nsplit():
         
         st.session_state.history = f"💸 N빵: {total:,} / {num_people}명 = 1인당 {split_amount:,}\n" + st.session_state.history
         st.session_state.calc_state = str(split_amount)
-        st.balloons() # N빵 성공 축하 풍선
+        st.balloons() 
     except Exception:
         st.session_state.calc_state = "Error"
 
@@ -125,10 +156,8 @@ def btn_click(label):
 st.title("🎉 파티 계산기 v8.0")
 st.markdown("웹 배포를 위한 **Streamlit 변환 버전**입니다! 스마트폰에서도 완벽하게 작동합니다.")
 
-# 디스플레이 화면
 st.info(f"**화면:** {st.session_state.calc_state}" if st.session_state.calc_state else "**화면:** 0", icon="📟")
 
-# 특수 기능 탭
 tab1, tab2, tab3 = st.tabs(["💸 N빵", "🎲 뽑기", "🧮 방정식"])
 
 with tab1:
@@ -148,12 +177,12 @@ with tab2:
         st.button("🎲 뽑기", use_container_width=True, on_click=do_rand)
 
 with tab3:
-    st.text_input("방정식 입력 (예: 2*x - 4 = 10)", key="eq_input")
+    # ★ 안내 문구 변경 ★
+    st.text_input("방정식 입력 (연립은 쉼표로 구분. 예: x+y=10, x-y=2)", key="eq_input")
     st.button("🧮 방정식 풀기", use_container_width=True, on_click=solve_equation)
 
 st.divider()
 
-# 계산기 버튼 (5x5 배열)
 buttons = [
     ['sin', 'cos', 'tan', 'π', 'C'],
     ['√', '**', '(', ')', '/'],
@@ -169,7 +198,6 @@ for row in buttons:
 
 st.divider()
 
-# 영수증 내역
 st.subheader("📜 영수증 (History)")
 st.text_area("계산 내역 (최근 순)", value=st.session_state.history, height=150, disabled=True)
 
