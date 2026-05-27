@@ -153,7 +153,7 @@ def btn_click(label):
     else: add_to_calc(label)
 
 # --- UI 렌더링 ---
-st.title("🎉 파티 계산기 v8.0")
+st.title("🎉 나만의 계산기 v8.0")
 st.markdown("웹 배포를 위한 **Streamlit 변환 버전**입니다! 스마트폰에서도 완벽하게 작동합니다.")
 
 st.info(f"**화면:** {st.session_state.calc_state}" if st.session_state.calc_state else "**화면:** 0", icon="📟")
