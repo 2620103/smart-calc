@@ -209,7 +209,7 @@ with c1:
         st.rerun()
 with c2:
     st.download_button("💾 텍스트로 저장", data=st.session_state.history, file_name="receipt.txt", mime="text/plain", use_container_width=True)
-    with st.expander("📖 스마트 계산기 사용 설명서 보기"):
+with st.expander("📖 스마트 계산기 사용 설명서 보기"):
     st.markdown("""
     **1. 💸 N빵 계산 (더치페이)**
     * 계산기 버튼으로 총액을 먼저 구하거나 화면에 입력된 상태에서, 인원수를 맞추고 **[N빵 계산]**을 누르면 1인당 얼마를 내야 하는지 정확히 나눠줍니다.
